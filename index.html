@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LED Sign Creator | Generate & Download Separate STLs</title>
+<title>LED Sign Creator | Generate & Download STL</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script type="importmap">
 {
@@ -15,6 +15,7 @@
 </script>
 <style>
   body { background: #0f0f12; color: #fff; }
+  .glow { text-shadow: 0 0 15px #00e5ff, 0 0 30px #00e5ff; }
   #preview3d { width: 100%; height: 400px; background: #111; border-radius: 12px; }
 </style>
 </head>
@@ -22,10 +23,11 @@
   <div class="max-w-6xl mx-auto">
     <header class="text-center mb-8">
       <h1 class="text-4xl font-black text-cyan-400">LED Sign Creator</h1>
-      <p class="text-gray-400 mt-2">Design → Preview → Download separate Body (bottom) + Face (top) STLs — print each flat, no supports</p>
+      <p class="text-gray-400 mt-2">Design your sign → Generate 3D model → Download separate Bottom & Top STLs (support-free)</p>
     </header>
 
     <div class="grid lg:grid-cols-2 gap-8">
+      <!-- Controls -->
       <div class="space-y-5 bg-gray-900 p-6 rounded-xl">
         <div>
           <label class="block text-sm text-gray-300 mb-1">Sign Text</label>
@@ -36,36 +38,37 @@
           <input id="height" type="range" min="40" max="250" value="120" class="w-full">
         </div>
         <div>
-          <label class="block text-sm text-gray-300 mb-1">Body Depth (mm): <span id="depthVal" class="text-cyan-400">35</span></label>
+          <label class="block text-sm text-gray-300 mb-1">Depth / Body Height (mm): <span id="depthVal" class="text-cyan-400">35</span></label>
           <input id="depth" type="range" min="15" max="60" value="35" class="w-full">
         </div>
         <div>
-          <label class="block text-sm text-gray-300 mb-1">Face Thickness (mm): <span id="faceVal" class="text-cyan-400">2</span></label>
-          <input id="face" type="range" min="0.8" max="5" step="0.2" value="2" class="w-full">
+          <label class="block text-sm text-gray-300 mb-1">Bevel (mm): <span id="bevelVal" class="text-cyan-400">2</span></label>
+          <input id="bevel" type="range" min="0" max="8" value="2" class="w-full">
         </div>
-        <div class="flex flex-col gap-3">
-          <button id="generateBtn" class="bg-cyan-600 hover:bg-cyan-500 py-3 rounded-lg font-bold">Generate & Preview</button>
-          <div class="flex gap-3">
-            <button id="downloadBodyBtn" class="flex-1 bg-purple-600 hover:bg-purple-500 py-3 rounded-lg font-bold" disabled>Download Body (Bottom)</button>
-            <button id="downloadFaceBtn" class="flex-1 bg-blue-600 hover:bg-blue-500 py-3 rounded-lg font-bold" disabled>Download Face (Top)</button>
-          </div>
+        <div class="flex gap-3">
+          <button id="generateBtn" class="flex-1 bg-cyan-600 hover:bg-cyan-500 py-3 rounded-lg font-bold">Generate & Preview</button>
+        </div>
+        <div class="flex gap-3">
+          <button id="downloadBottomBtn" class="flex-1 bg-purple-600 hover:bg-purple-500 py-3 rounded-lg font-bold" disabled>Download Bottom STL</button>
+          <button id="downloadTopBtn" class="flex-1 bg-indigo-600 hover:bg-indigo-500 py-3 rounded-lg font-bold" disabled>Download Top STL</button>
         </div>
         <div id="status" class="text-sm text-gray-400">Enter text and click Generate</div>
         <div id="bom" class="text-sm bg-gray-800 p-4 rounded-lg hidden">
           <strong class="text-cyan-400">BOM Estimate</strong>
           <div id="bomText"></div>
         </div>
+        <p class="text-xs text-gray-500">Bottom = housing (print dark, open for LED strip). Top = thin face (print translucent white). Both print flat without supports.</p>
       </div>
 
+      <!-- Preview -->
       <div>
         <div id="preview3d"></div>
-        <p class="text-xs text-gray-500 mt-2 text-center">Drag to rotate • Scroll to zoom • Body (solid) + thin Face (wireframe overlay)</p>
+        <p class="text-xs text-gray-500 mt-2 text-center">Drag to rotate • Scroll to zoom • Shows body + face</p>
       </div>
     </div>
 
     <footer class="mt-12 text-center text-gray-500 text-sm">
-      Separate STLs for support-free printing. Print Body in opaque, Face in translucent white. Glue face on front after inserting LED strip.<br>
-      Inspired by Creality Cloud LED signs. Use WLED for control.
+      Separate top & bottom for support-free printing. Print bottom in dark filament, top in translucent. Add LED strip inside.
     </footer>
   </div>
 
@@ -79,13 +82,13 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const textEl = document.getElementById('text');
 const heightEl = document.getElementById('height');
 const depthEl = document.getElementById('depth');
-const faceEl = document.getElementById('face');
+const bevelEl = document.getElementById('bevel');
 const heightVal = document.getElementById('heightVal');
 const depthVal = document.getElementById('depthVal');
-const faceVal = document.getElementById('faceVal');
+const bevelVal = document.getElementById('bevelVal');
 const generateBtn = document.getElementById('generateBtn');
-const downloadBodyBtn = document.getElementById('downloadBodyBtn');
-const downloadFaceBtn = document.getElementById('downloadFaceBtn');
+const downloadBottomBtn = document.getElementById('downloadBottomBtn');
+const downloadTopBtn = document.getElementById('downloadTopBtn');
 const statusEl = document.getElementById('status');
 const bomEl = document.getElementById('bom');
 const bomText = document.getElementById('bomText');
@@ -108,6 +111,9 @@ function init3D() {
   const dir = new THREE.DirectionalLight(0xffffff, 1);
   dir.position.set(100, 100, 200);
   scene.add(dir);
+  const grid = new THREE.GridHelper(400, 20, 0x444444, 0x222222);
+  grid.rotation.x = Math.PI / 2;
+  scene.add(grid);
   animate();
 }
 function animate() {
@@ -123,18 +129,6 @@ async function loadFont() {
   });
 }
 
-function createTextGeometry(text, size, depth) {
-  const geometry = new TextGeometry(text, {
-    font: font,
-    size: size,
-    depth: depth,
-    curveSegments: 12,
-    bevelEnabled: false
-  });
-  geometry.center();
-  return geometry;
-}
-
 async function generate() {
   const text = (textEl.value || 'SIGN').toUpperCase().trim();
   if (!text) return;
@@ -145,22 +139,40 @@ async function generate() {
     if (!font) font = await loadFont();
     const size = parseFloat(heightEl.value);
     const bodyDepth = parseFloat(depthEl.value);
-    const faceThickness = parseFloat(faceEl.value);
+    const bevel = parseFloat(bevelEl.value);
+    const faceThickness = 2; // thin top for diffuser
 
     if (bodyMesh) scene.remove(bodyMesh);
     if (faceMesh) scene.remove(faceMesh);
 
-    // Body (bottom / housing) - full depth
-    const bodyGeo = createTextGeometry(text, size, bodyDepth);
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x00e5ff, metalness: 0.2, roughness: 0.4 });
+    // Bottom / Body (housing)
+    const bodyGeo = new TextGeometry(text, {
+      font: font,
+      size: size,
+      depth: bodyDepth,
+      curveSegments: 12,
+      bevelEnabled: bevel > 0,
+      bevelThickness: bevel * 0.5,
+      bevelSize: bevel * 0.3,
+      bevelSegments: 3
+    });
+    bodyGeo.center();
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.1, roughness: 0.6 });
     bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
     scene.add(bodyMesh);
 
-    // Face (top / diffuser) - thin, slightly offset for preview
-    const faceGeo = createTextGeometry(text, size, faceThickness);
-    const faceMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
+    // Top / Face (thin diffuser)
+    const faceGeo = new TextGeometry(text, {
+      font: font,
+      size: size * 0.98, // slightly smaller for fit
+      depth: faceThickness,
+      curveSegments: 12,
+      bevelEnabled: false
+    });
+    faceGeo.center();
+    faceGeo.translate(0, 0, bodyDepth / 2 + faceThickness / 2); // sit on top of body
+    const faceMat = new THREE.MeshStandardMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.7, metalness: 0.1, roughness: 0.3 });
     faceMesh = new THREE.Mesh(faceGeo, faceMat);
-    faceMesh.position.z = bodyDepth / 2 + faceThickness / 2 + 0.5;
     scene.add(faceMesh);
 
     const box = new THREE.Box3().setFromObject(bodyMesh);
@@ -176,14 +188,14 @@ async function generate() {
       Width: ~${Math.round(width)} mm<br>
       LED strip: ~${ledLen} m (${pixels} px @ 30/m)<br>
       Power: ~${power} A @ 5V<br>
-      Print Body in opaque, Face in translucent white<br>
-      Controller: Wemos D1 Mini + WLED
+      Bottom: print dark (housing)<br>
+      Top: print translucent white (face)
     `;
     bomEl.classList.remove('hidden');
 
-    statusEl.textContent = 'Ready — download Body and Face separately';
-    downloadBodyBtn.disabled = false;
-    downloadFaceBtn.disabled = false;
+    statusEl.textContent = 'Ready — Download Bottom (housing) and Top (face)';
+    downloadBottomBtn.disabled = false;
+    downloadTopBtn.disabled = false;
   } catch (e) {
     statusEl.textContent = 'Error: ' + e.message;
     console.error(e);
@@ -191,14 +203,10 @@ async function generate() {
   generateBtn.disabled = false;
 }
 
-function downloadSTL(mesh, suffix) {
+function downloadPart(mesh, suffix) {
   if (!mesh) return;
   const exporter = new STLExporter();
-  // Temporarily reset position for clean export
-  const originalPos = mesh.position.clone();
-  mesh.position.set(0, 0, 0);
   const data = exporter.parse(mesh, { binary: true });
-  mesh.position.copy(originalPos);
   const blob = new Blob([data], { type: 'application/octet-stream' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -208,20 +216,17 @@ function downloadSTL(mesh, suffix) {
   URL.revokeObjectURL(url);
 }
 
-['height','depth','face'].forEach(id => {
+function downloadBottom() { downloadPart(bodyMesh, 'bottom'); statusEl.textContent = 'Bottom STL downloaded! Print dark, no supports needed if flat.'; }
+function downloadTop() { downloadPart(faceMesh, 'top'); statusEl.textContent = 'Top STL downloaded! Print translucent, no supports needed if flat.'; }
+
+['height','depth','bevel'].forEach(id => {
   document.getElementById(id).addEventListener('input', e => {
     document.getElementById(id + 'Val').textContent = e.target.value;
   });
 });
 generateBtn.addEventListener('click', generate);
-downloadBodyBtn.addEventListener('click', () => {
-  downloadSTL(bodyMesh, 'body_bottom');
-  statusEl.textContent = 'Body (bottom) STL downloaded!';
-});
-downloadFaceBtn.addEventListener('click', () => {
-  downloadSTL(faceMesh, 'face_top');
-  statusEl.textContent = 'Face (top) STL downloaded!';
-});
+downloadBottomBtn.addEventListener('click', downloadBottom);
+downloadTopBtn.addEventListener('click', downloadTop);
 textEl.addEventListener('keydown', e => { if (e.key === 'Enter') generate(); });
 
 init3D();

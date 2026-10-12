@@ -1,201 +1,212 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LED Sign Creator | Generate Custom 3D Printable LED Signs</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-      }
-    }
-  </script>
-  <style>
-    body { font-family: 'Inter', system-ui, sans-serif; }
-    #preview-container { width: 100%; height: 400px; background: #111; border-radius: 12px; position: relative; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LED Sign Creator | Generate & Download STL</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+  body { background: #0f0f12; color: #fff; }
+  .glow { text-shadow: 0 0 15px #00e5ff, 0 0 30px #00e5ff; }
+  #preview3d { width: 100%; height: 400px; background: #111; border-radius: 12px; }
+</style>
 </head>
-<body class="bg-gray-950 text-white min-h-screen">
-  <div class="max-w-5xl mx-auto p-6">
+<body class="min-h-screen p-6">
+  <div class="max-w-6xl mx-auto">
     <header class="text-center mb-8">
-      <h1 class="text-4xl font-bold mb-2">LED Sign Creator</h1>
-      <p class="text-gray-400">Create custom 3D-printable LED channel letter signs. Type text, adjust size, preview in 3D, download STL.</p>
+      <h1 class="text-4xl font-black text-cyan-400">LED Sign Creator</h1>
+      <p class="text-gray-400 mt-2">Design your sign → Generate 3D model → Download STL for printing</p>
     </header>
 
-    <div class="grid md:grid-cols-2 gap-8">
+    <div class="grid lg:grid-cols-2 gap-8">
       <!-- Controls -->
-      <div class="space-y-5">
-        <label class="block">
-          <span class="text-sm text-gray-300">Sign Text</span>
-          <input id="text" type="text" value="Gourmet Burgers" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-xl" oninput="updateModel()">
-        </label>
-        <label class="block">
-          <span class="text-sm text-gray-300">Letter Height (mm)</span>
-          <input id="height" type="range" min="40" max="250" value="100" class="w-full" oninput="updateModel()">
-          <span id="heightVal" class="text-cyan-400">100 mm</span>
-        </label>
-        <label class="block">
-          <span class="text-sm text-gray-300">Depth / Thickness (mm)</span>
-          <input id="depth" type="range" min="15" max="80" value="35" class="w-full" oninput="updateModel()">
-          <span id="depthVal" class="text-cyan-400">35 mm</span>
-        </label>
-        <label class="block">
-          <span class="text-sm text-gray-300">Wall Thickness (mm) - for channel style</span>
-          <input id="wall" type="range" min="1.5" max="5" step="0.5" value="2.5" class="w-full" oninput="updateModel()">
-          <span id="wallVal" class="text-cyan-400">2.5 mm</span>
-        </label>
-        <div class="flex gap-3">
-          <button onclick="downloadSTL()" class="flex-1 bg-cyan-600 hover:bg-cyan-500 px-6 py-4 rounded-lg font-bold text-lg">Download STL</button>
-          <button onclick="showBOM()" class="flex-1 bg-gray-700 hover:bg-gray-600 px-6 py-4 rounded-lg font-semibold">BOM & Guide</button>
+      <div class="space-y-5 bg-gray-900 p-6 rounded-xl">
+        <div>
+          <label class="block text-sm text-gray-300 mb-1">Sign Text</label>
+          <input id="text" type="text" value="GOURMET BURGERS" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-xl" maxlength="40">
         </div>
-        <p class="text-xs text-gray-500">STL is the channel letter body (walls). Print face separately in translucent filament or add in post. Scale is in mm.</p>
+        <div>
+          <label class="block text-sm text-gray-300 mb-1">Letter Height (mm): <span id="heightVal" class="text-cyan-400">120</span></label>
+          <input id="height" type="range" min="40" max="250" value="120" class="w-full">
+        </div>
+        <div>
+          <label class="block text-sm text-gray-300 mb-1">Depth (mm): <span id="depthVal" class="text-cyan-400">35</span></label>
+          <input id="depth" type="range" min="15" max="60" value="35" class="w-full">
+        </div>
+        <div>
+          <label class="block text-sm text-gray-300 mb-1">Bevel (mm): <span id="bevelVal" class="text-cyan-400">2</span></label>
+          <input id="bevel" type="range" min="0" max="8" value="2" class="w-full">
+        </div>
+        <div class="flex gap-3">
+          <button id="generateBtn" class="flex-1 bg-cyan-600 hover:bg-cyan-500 py-3 rounded-lg font-bold">Generate & Preview</button>
+          <button id="downloadBtn" class="flex-1 bg-purple-600 hover:bg-purple-500 py-3 rounded-lg font-bold" disabled>Download STL</button>
+        </div>
+        <div id="status" class="text-sm text-gray-400">Enter text and click Generate</div>
+        <div id="bom" class="text-sm bg-gray-800 p-4 rounded-lg hidden">
+          <strong class="text-cyan-400">BOM Estimate</strong>
+          <div id="bomText"></div>
+        </div>
       </div>
 
       <!-- Preview -->
       <div>
-        <div id="preview-container"></div>
-        <div id="stats" class="mt-4 bg-gray-900 rounded-lg p-4 text-sm space-y-1">
-          <p>Model ready. Rotate with mouse. Download STL when happy.</p>
-        </div>
+        <div id="preview3d"></div>
+        <p class="text-xs text-gray-500 mt-2 text-center">Drag to rotate • Scroll to zoom • This is the printable body</p>
       </div>
     </div>
 
-    <div id="bom" class="mt-8 bg-gray-900 rounded-xl p-6 hidden">
-      <h2 class="text-xl font-bold mb-3">Assembly Guide & BOM</h2>
-      <ul class="list-disc pl-5 space-y-2 text-gray-300">
-        <li><strong>Print the body</strong> (this STL) in opaque filament (black/white PETG recommended for strength).</li>
-        <li><strong>LED Channel:</strong> The model is a solid extrusion. For true channel letters, hollow the inside or use a slicer modifier, or print as hollow with 2-3 wall perimeters and leave space for strip. Common is 8-12mm deep channel.</li>
-        <li>WS2812B / SK6812 or COB LED strip (length ≈ sign width + 10%)</li>
-        <li>Controller: Wemos D1 Mini or ESP32 running <a href="https://install.wled.me" class="text-cyan-400" target="_blank">WLED</a></li>
-        <li>5V power supply sized for your pixel count (~0.06A per pixel full white)</li>
-        <li>Optional translucent white PETG face (print thin 0.8-1.2mm and glue on front)</li>
-        <li>Mounting: holes or UniHook style for van/wall</li>
-      </ul>
-      <p class="mt-4 text-sm text-gray-400">Inspired by Creality Cloud models like the Gourmet Burgers LED sign. Print, drop in strip, power up, and glow.</p>
-    </div>
-
     <footer class="mt-12 text-center text-gray-500 text-sm">
-      Full client-side generator. STL downloads immediately. Built for makers who want custom LED signs fast.
+      Client-side STL generation for LED channel letter signs. Print the body, add LED strip + translucent face.<br>
+      Inspired by Creality Cloud models. WLED recommended for lighting.
     </footer>
   </div>
 
-  <script type="module">
-    import * as THREE from 'three';
-    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-    import { FontLoader } from 'three/addons/loaders/FontLoader.js';
-    import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
-    import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+<script type="module">
+import * as THREE from 'three';
+import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-    let scene, camera, renderer, controls, currentMesh, font;
+const textEl = document.getElementById('text');
+const heightEl = document.getElementById('height');
+const depthEl = document.getElementById('depth');
+const bevelEl = document.getElementById('bevel');
+const heightVal = document.getElementById('heightVal');
+const depthVal = document.getElementById('depthVal');
+const bevelVal = document.getElementById('bevelVal');
+const generateBtn = document.getElementById('generateBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const statusEl = document.getElementById('status');
+const bomEl = document.getElementById('bom');
+const bomText = document.getElementById('bomText');
+
+let scene, camera, renderer, controls, currentMesh = null, font = null;
+
+function init3D() {
+  const container = document.getElementById('preview3d');
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x111111);
+  camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 2000);
+  camera.position.set(0, 0, 400);
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  container.appendChild(renderer.domElement);
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+  scene.add(ambient);
+  const dir = new THREE.DirectionalLight(0xffffff, 1);
+  dir.position.set(100, 100, 200);
+  scene.add(dir);
+  const grid = new THREE.GridHelper(400, 20, 0x444444, 0x222222);
+  grid.rotation.x = Math.PI / 2;
+  scene.add(grid);
+  animate();
+}
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+async function loadFont() {
+  return new Promise((resolve, reject) => {
     const loader = new FontLoader();
+    loader.load('https://threejs.org/examples/fonts/helvetiker_bold.typeface.json', resolve, undefined, reject);
+  });
+}
 
-    // Load a free font (helvetiker is commonly available)
-    loader.load('https://unpkg.com/three@0.160.0/examples/fonts/helvetiker_bold.typeface.json', (loadedFont) => {
-      font = loadedFont;
-      initScene();
-      updateModel();
+async function generate() {
+  const text = (textEl.value || 'SIGN').toUpperCase().trim();
+  if (!text) return;
+  statusEl.textContent = 'Loading font & generating geometry...';
+  generateBtn.disabled = true;
+
+  try {
+    if (!font) font = await loadFont();
+    const size = parseFloat(heightEl.value);
+    const depth = parseFloat(depthEl.value);
+    const bevel = parseFloat(bevelEl.value);
+
+    if (currentMesh) scene.remove(currentMesh);
+
+    const geometry = new TextGeometry(text, {
+      font: font,
+      size: size,
+      depth: depth,
+      curveSegments: 12,
+      bevelEnabled: bevel > 0,
+      bevelThickness: bevel * 0.5,
+      bevelSize: bevel * 0.3,
+      bevelSegments: 3
     });
+    geometry.center();
 
-    function initScene() {
-      const container = document.getElementById('preview-container');
-      scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x111111);
+    const material = new THREE.MeshStandardMaterial({ color: 0x00e5ff, metalness: 0.2, roughness: 0.4 });
+    currentMesh = new THREE.Mesh(geometry, material);
+    scene.add(currentMesh);
 
-      camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 2000);
-      camera.position.set(0, 50, 200);
+    const box = new THREE.Box3().setFromObject(currentMesh);
+    const center = box.getCenter(new THREE.Vector3());
+    controls.target.copy(center);
+    camera.position.set(center.x, center.y, Math.max(box.getSize(new THREE.Vector3()).length() * 1.5, 300));
 
-      renderer = new THREE.WebGLRenderer({ antialias: true });
-      renderer.setSize(container.clientWidth, container.clientHeight);
-      container.appendChild(renderer.domElement);
+    const width = box.getSize(new THREE.Vector3()).x;
+    const ledLen = (width / 1000 * 1.15).toFixed(2);
+    const pixels = Math.round(ledLen * 30);
+    const power = (pixels * 0.06).toFixed(1);
+    bomText.innerHTML = `
+      Width: ~${Math.round(width)} mm<br>
+      LED strip: ~${ledLen} m (${pixels} px @ 30/m)<br>
+      Power: ~${power} A @ 5V<br>
+      Controller: Wemos D1 Mini + WLED<br>
+      Face: print translucent white separately or use acrylic
+    `;
+    bomEl.classList.remove('hidden');
 
-      controls = new OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true;
+    statusEl.textContent = 'Ready — drag to inspect, then Download STL';
+    downloadBtn.disabled = false;
+  } catch (e) {
+    statusEl.textContent = 'Error: ' + e.message;
+    console.error(e);
+  }
+  generateBtn.disabled = false;
+}
 
-      const light = new THREE.DirectionalLight(0xffffff, 1);
-      light.position.set(50, 100, 50);
-      scene.add(light);
-      scene.add(new THREE.AmbientLight(0x404040));
+function downloadSTL() {
+  if (!currentMesh) return;
+  const exporter = new STLExporter();
+  const data = exporter.parse(currentMesh, { binary: true });
+  const blob = new Blob([data], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (textEl.value || 'sign').toLowerCase().replace(/\s+/g, '_') + '_led_sign.stl';
+  a.click();
+  URL.revokeObjectURL(url);
+  statusEl.textContent = 'STL downloaded! Print body, add LED strip, translucent face.';
+}
 
-      function animate() {
-        requestAnimationFrame(animate);
-        controls.update();
-        renderer.render(scene, camera);
-      }
-      animate();
+['height','depth','bevel'].forEach(id => {
+  document.getElementById(id).addEventListener('input', e => {
+    document.getElementById(id + 'Val').textContent = e.target.value;
+  });
+});
+generateBtn.addEventListener('click', generate);
+downloadBtn.addEventListener('click', downloadSTL);
+textEl.addEventListener('keydown', e => { if (e.key === 'Enter') generate(); });
 
-      window.addEventListener('resize', () => {
-        camera.aspect = container.clientWidth / container.clientHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(container.clientWidth, container.clientHeight);
-      });
-    }
-
-    window.updateModel = function() {
-      if (!font) return;
-      const text = document.getElementById('text').value || 'Sign';
-      const height = parseFloat(document.getElementById('height').value);
-      const depth = parseFloat(document.getElementById('depth').value);
-      const wall = parseFloat(document.getElementById('wall').value);
-
-      document.getElementById('heightVal').textContent = height + ' mm';
-      document.getElementById('depthVal').textContent = depth + ' mm';
-      document.getElementById('wallVal').textContent = wall + ' mm';
-
-      if (currentMesh) scene.remove(currentMesh);
-
-      // Create extruded text as the channel body
-      const geometry = new TextGeometry(text, {
-        font: font,
-        size: height,
-        depth: depth,
-        curveSegments: 8,
-        bevelEnabled: false
-      });
-
-      geometry.computeBoundingBox();
-      const centerOffset = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
-      geometry.translate(centerOffset, 0, 0);
-
-      const material = new THREE.MeshPhongMaterial({
-        color: 0x00ffff,
-        specular: 0x111111,
-        shininess: 30,
-        side: THREE.DoubleSide
-      });
-
-      currentMesh = new THREE.Mesh(geometry, material);
-      scene.add(currentMesh);
-
-      // Rough stats
-      const width = geometry.boundingBox.max.x - geometry.boundingBox.min.x;
-      document.getElementById('stats').innerHTML = `
-        <p>Estimated width: ~${Math.round(width)} mm</p>
-        <p>LED strip approx: ~${(width / 1000 * 1.15).toFixed(1)} m</p>
-        <p>Suggested pixels (30/m): ~${Math.round(width / 1000 * 1.15 * 30)}</p>
-        <p class="text-cyan-400">Ready to download STL (body for LED channel sign)</p>
-      `;
-    };
-
-    window.downloadSTL = function() {
-      if (!currentMesh) {
-        alert('Model not ready yet. Wait for font load.');
-        return;
-      }
-      const exporter = new STLExporter();
-      const result = exporter.parse(currentMesh, { binary: true });
-      const blob = new Blob([result], { type: 'application/octet-stream' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = (document.getElementById('text').value || 'led-sign').replace(/\s+/g, '-') + '.stl';
-      link.click();
-    };
-
-    window.showBOM = function() {
-      document.getElementById('bom').classList.toggle('hidden');
-    };
-  </script>
+init3D();
+setTimeout(generate, 500);
+</script>
 </body>
 </html>

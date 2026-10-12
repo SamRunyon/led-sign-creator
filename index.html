@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LED Sign Creator | Design Custom 3D Printable LED Signs</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .glow { text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 30px #0ff; }
+    .preview-box { background: #111; border-radius: 12px; min-height: 180px; display: flex; align-items: center; justify-content: center; }
+  </style>
+</head>
+<body class="bg-gray-950 text-white min-h-screen">
+  <div class="max-w-4xl mx-auto p-6">
+    <header class="text-center mb-8">
+      <h1 class="text-4xl font-bold mb-2">LED Sign Creator</h1>
+      <p class="text-gray-400">Design custom 3D-printable LED channel letter signs — like the Gourmet Burgers catering van model.</p>
+    </header>
+
+    <div class="grid md:grid-cols-2 gap-8">
+      <!-- Controls -->
+      <div class="space-y-4">
+        <label class="block">
+          <span class="text-sm text-gray-300">Sign Text</span>
+          <input id="text" type="text" value="Gourmet Burgers" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-xl" oninput="updatePreview()">
+        </label>
+        <label class="block">
+          <span class="text-sm text-gray-300">Letter Height (mm)</span>
+          <input id="height" type="range" min="50" max="300" value="120" class="w-full" oninput="updatePreview()">
+          <span id="heightVal" class="text-cyan-400">120 mm</span>
+        </label>
+        <label class="block">
+          <span class="text-sm text-gray-300">Depth (mm)</span>
+          <input id="depth" type="range" min="20" max="80" value="40" class="w-full" oninput="updatePreview()">
+          <span id="depthVal" class="text-cyan-400">40 mm</span>
+        </label>
+        <div class="flex gap-2">
+          <button onclick="calcBOM()" class="flex-1 bg-cyan-600 hover:bg-cyan-500 px-4 py-3 rounded-lg font-semibold">Calculate BOM</button>
+          <button onclick="generateFiles()" class="flex-1 bg-purple-600 hover:bg-purple-500 px-4 py-3 rounded-lg font-semibold">Generate STL (Demo)</button>
+        </div>
+      </div>
+
+      <!-- Preview -->
+      <div>
+        <div class="preview-box mb-4">
+          <div id="preview" class="text-5xl font-black glow tracking-wider text-center px-4" style="color:#0ff;">Gourmet Burgers</div>
+        </div>
+        <div id="stats" class="bg-gray-900 rounded-lg p-4 text-sm space-y-1">
+          <p>Estimated width: <span id="widthEst">~420 mm</span></p>
+          <p>LED strip needed: <span id="ledLen">~1.2 m</span></p>
+          <p>WS2812 pixels (30/m): <span id="pixels">~36</span></p>
+          <p>Power @ full white: <span id="power">~2.2 A @ 5V</span></p>
+        </div>
+      </div>
+    </div>
+
+    <div id="bom" class="mt-8 bg-gray-900 rounded-xl p-6 hidden">
+      <h2 class="text-xl font-bold mb-3">Bill of Materials</h2>
+      <ul class="list-disc pl-5 space-y-1 text-gray-300">
+        <li>WS2812B or COB LED strip (length calculated above)</li>
+        <li>Wemos D1 Mini or ESP32 + WLED firmware</li>
+        <li>5V power supply (adequate amps)</li>
+        <li>USB cable or barrel jack</li>
+        <li>Optional: M3 heat inserts + screws for modular assembly</li>
+        <li>Translucent white PETG/PLA for face / diffuser</li>
+      </ul>
+      <p class="mt-3 text-sm text-gray-400">WLED install: <a href="https://install.wled.me" class="text-cyan-400" target="_blank">install.wled.me</a></p>
+    </div>
+
+    <footer class="mt-12 text-center text-gray-500 text-sm">
+      Sample demo for custom 3D printable LED signs. Full parametric generator coming soon.<br>
+      Inspired by Creality Cloud LED channel letter models.
+    </footer>
+  </div>
+
+  <script>
+    function updatePreview() {
+      const text = document.getElementById('text').value || 'Sign';
+      const height = document.getElementById('height').value;
+      const depth = document.getElementById('depth').value;
+      document.getElementById('preview').textContent = text;
+      document.getElementById('heightVal').textContent = height + ' mm';
+      document.getElementById('depthVal').textContent = depth + ' mm';
+      // Rough estimates
+      const estWidth = Math.round(text.length * height * 0.65);
+      document.getElementById('widthEst').textContent = '~' + estWidth + ' mm';
+      const ledLen = (estWidth / 1000 * 1.1).toFixed(1);
+      document.getElementById('ledLen').textContent = '~' + ledLen + ' m';
+      const pixels = Math.round(ledLen * 30);
+      document.getElementById('pixels').textContent = '~' + pixels;
+      document.getElementById('power').textContent = '~' + (pixels * 0.06).toFixed(1) + ' A @ 5V';
+    }
+    function calcBOM() {
+      document.getElementById('bom').classList.remove('hidden');
+    }
+    function generateFiles() {
+      alert('Demo mode: In the full version this would generate parametric STL/3MF files for the channel letters + backplate with LED channel.\n\nText: ' + document.getElementById('text').value + '\nHeight: ' + document.getElementById('height').value + 'mm');
+    }
+    updatePreview();
+  </script>
+</body>
+</html>
